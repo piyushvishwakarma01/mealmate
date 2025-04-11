@@ -1,0 +1,346 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  NGO
+  DONOR
+  VOLUNTEER
+}
+
+enum DonationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  SCHEDULED
+  PICKED
+  DELIVERED
+  CANCELLED
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum VolunteerAssignmentStatus {
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  password          String
+  fullName          String    @map("full_name")
+  phone             String?
+  role              UserRole
+  avatarUrl         String?   @map("avatar_url")
+  address           String?
+  city              String?
+  state             String?
+  zipCode           String?   @map("zip_code")
+  isActive          Boolean   @default(true) @map("is_active")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Role-specific profiles
+  donor             Donor?
+  ngo               NGO?
+  volunteer         Volunteer?
+
+  // Relationships
+  sentMessages      Message[] @relation("SenderMessages")
+  receivedMessages  Message[] @relation("RecipientMessages")
+  notifications     Notification[]
+  donorFeedbacks    Feedback[] @relation("DonorFeedbacks")
+  ngoFeedbacks      Feedback[] @relation("NGOFeedbacks")
+  assignedBy        VolunteerAssignment[] @relation("AssignedByUser")
+  volunteerAssignments VolunteerAssignment[] @relation("VolunteerUser")
+  foodDonations     FoodDonation[] @relation("DonorDonations")
+  acceptedDonations FoodDonation[] @relation("NGODonations")
+  donationImages    DonationImage[]
+  adminLogs         AdminLog[]
+  complaints        Complaint[]
+  reports           Report[]
+
+  @@map("users")
+}
+
+model Donor {
+  id                  String    @id
+  businessName        String    @map("business_name")
+  businessType        String    @map("business_type")
+  licenseNumber       String?   @map("license_number")
+  licenseDocumentUrl  String?   @map("license_document_url")
+  operatingHours      Json?     @map("operating_hours")
+  verified            Boolean   @default(false)
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  user                User      @relation(fields: [id], references: [id])
+
+  @@map("donors")
+}
+
+model NGO {
+  id                      String    @id
+  organizationName        String    @map("organization_name")
+  registrationNumber      String    @map("registration_number")
+  description             String?
+  website                 String?
+  serviceAreas            String[]  @map("service_areas")
+  capacity                Int?
+  verified                Boolean   @default(false)
+  verificationDocumentUrl String?   @map("verification_document_url")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  user                    User      @relation(fields: [id], references: [id])
+  pickupSchedules         PickupSchedule[]
+
+  @@map("ngos")
+}
+
+model Volunteer {
+  id                      String    @id
+  availability            Json?
+  vehicleType             String?   @map("vehicle_type")
+  serviceAreas            String[]  @map("service_areas")
+  maxDistance             Float?    @map("max_distance")
+  verified                Boolean   @default(false)
+  verificationDocumentUrl String?   @map("verification_document_url")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  user                    User      @relation(fields: [id], references: [id])
+  assignments             VolunteerAssignment[] @relation("VolunteerAssignments")
+
+  @@map("volunteers")
+}
+
+model FoodDonation {
+  id                String          @id @default(uuid())
+  donorId           String          @map("donor_id")
+  ngoId             String?         @map("ngo_id")
+  title             String
+  description       String?
+  quantityTotal     Float           @map("quantity_total")
+  quantityUnit      String          @map("quantity_unit")
+  preparationTime   DateTime?       @map("preparation_time")
+  expiryTime        DateTime        @map("expiry_time")
+  pickupLocation    String          @map("pickup_location")
+  pickupNotes       String?         @map("pickup_notes")
+  status            DonationStatus  @default(PENDING)
+  statusUpdatedAt   DateTime        @default(now()) @map("status_updated_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  // Relationships
+  donor             User            @relation("DonorDonations", fields: [donorId], references: [id])
+  ngo               User?           @relation("NGODonations", fields: [ngoId], references: [id])
+  foodItems         FoodItem[]
+  pickupSchedules   PickupSchedule[]
+  images            DonationImage[]
+  feedbacks         Feedback[]
+  volunteerAssignments VolunteerAssignment[]
+  messages          Message[]
+
+  @@map("food_donations")
+}
+
+model FoodItem {
+  id            String    @id @default(uuid())
+  donationId    String    @map("donation_id")
+  name          String
+  category      String
+  quantity      Float
+  quantityUnit  String    @map("quantity_unit")
+  dietaryInfo   String[]  @map("dietary_info")
+  allergens     String[]
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  donation      FoodDonation @relation(fields: [donationId], references: [id])
+
+  @@map("food_items")
+}
+
+model PickupSchedule {
+  id                String    @id @default(uuid())
+  donationId        String    @map("donation_id")
+  scheduledTime     DateTime  @map("scheduled_time")
+  actualPickupTime  DateTime? @map("actual_pickup_time")
+  ngoId             String    @map("ngo_id")
+  ngoNotes          String?   @map("ngo_notes")
+  donorNotes        String?   @map("donor_notes")
+  status            String
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  donation          FoodDonation @relation(fields: [donationId], references: [id])
+  ngo               NGO @relation(fields: [ngoId], references: [id])
+  volunteerAssignments VolunteerAssignment[]
+
+  @@map("pickup_schedules")
+}
+
+model VolunteerAssignment {
+  id              String                   @id @default(uuid())
+  volunteerId     String                   @map("volunteer_id")
+  donationId      String                   @map("donation_id")
+  pickupId        String?                  @map("pickup_id")
+  assignedById    String                   @map("assigned_by_id")
+  assignedByRole  UserRole                 @map("assigned_by_role")
+  status          VolunteerAssignmentStatus @default(ASSIGNED)
+  pickupAddress   String                   @map("pickup_address")
+  dropoffAddress  String                   @map("dropoff_address")
+  pickupTime      DateTime                 @map("pickup_time")
+  dropoffTime     DateTime?                @map("dropoff_time")
+  notes           String?
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  // Relationships
+  volunteer       User                     @relation("VolunteerUser", fields: [volunteerId], references: [id])
+  donation        FoodDonation             @relation(fields: [donationId], references: [id])
+  pickup          PickupSchedule?          @relation(fields: [pickupId], references: [id])
+  assignedBy      User                     @relation("AssignedByUser", fields: [assignedById], references: [id])
+  volunteerProfile Volunteer               @relation("VolunteerAssignments", fields: [volunteerId], references: [id])
+
+  @@map("volunteer_assignments")
+}
+
+model DonationImage {
+  id          String    @id @default(uuid())
+  donationId  String    @map("donation_id")
+  imageUrl    String    @map("image_url")
+  caption     String?
+  uploadedBy  String    @map("uploaded_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relationships
+  donation    FoodDonation @relation(fields: [donationId], references: [id])
+  user        User @relation(fields: [uploadedBy], references: [id])
+
+  @@map("donation_images")
+}
+
+model Feedback {
+  id          String    @id @default(uuid())
+  donationId  String    @map("donation_id")
+  ngoId       String    @map("ngo_id")
+  donorId     String    @map("donor_id")
+  rating      Int
+  comment     String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  donation    FoodDonation @relation(fields: [donationId], references: [id])
+  ngo         User @relation("NGOFeedbacks", fields: [ngoId], references: [id])
+  donor       User @relation("DonorFeedbacks", fields: [donorId], references: [id])
+
+  @@map("feedback")
+}
+
+model Notification {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  title             String
+  message           String
+  relatedEntityType String?   @map("related_entity_type")
+  relatedEntityId   String?   @map("related_entity_id")
+  isRead            Boolean   @default(false) @map("is_read")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  // Relationships
+  user              User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+model Message {
+  id          String    @id @default(uuid())
+  donationId  String?   @map("donation_id")
+  senderId    String    @map("sender_id")
+  recipientId String    @map("recipient_id")
+  content     String
+  isRead      Boolean   @default(false) @map("is_read")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relationships
+  donation    FoodDonation? @relation(fields: [donationId], references: [id])
+  sender      User @relation("SenderMessages", fields: [senderId], references: [id])
+  recipient   User @relation("RecipientMessages", fields: [recipientId], references: [id])
+
+  @@map("messages")
+}
+
+model AdminLog {
+  id          String    @id @default(uuid())
+  adminId     String    @map("admin_id")
+  action      String
+  entityType  String    @map("entity_type")
+  entityId    String    @map("entity_id")
+  details     Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relationships
+  admin       User @relation(fields: [adminId], references: [id])
+
+  @@map("admin_logs")
+}
+
+model Complaint {
+  id          String          @id @default(uuid())
+  userId      String          @map("user_id")
+  title       String
+  description String
+  status      ComplaintStatus @default(OPEN)
+  assignedTo  String?         @map("assigned_to")
+  resolution  String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  // Relationships
+  user        User @relation(fields: [userId], references: [id])
+
+  @@map("complaints")
+}
+
+model Report {
+  id          String    @id @default(uuid())
+  title       String
+  description String
+  reportType  String    @map("report_type")
+  parameters  Json
+  resultData  Json      @map("result_data")
+  createdBy   String    @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relationships
+  user        User @relation(fields: [createdBy], references: [id])
+
+  @@map("reports")
+}

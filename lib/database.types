@@ -1,0 +1,118 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
+export type UserRole = "donor" | "ngo" | "admin" | "volunteer";
+export type DonationStatus = "pending" | "accepted" | "rejected" | "scheduled" | "picked" | "delivered" | "cancelled";
+export type ComplaintStatus = "open" | "in_progress" | "resolved" | "closed";
+export type VolunteerAssignmentStatus = "assigned" | "accepted" | "in_progress" | "completed" | "cancelled";
+
+export interface Database {
+  public: {
+    Tables: {
+      users: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      ngos: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      donors: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      volunteers: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      food_donations: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      food_items: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      pickup_schedules: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      volunteer_assignments: {
+        Row: {
+          id: string;
+          volunteer_id: string;
+          donation_id: string;
+          pickup_id: string | null;
+          assigned_by_id: string;
+          assigned_by_role: UserRole;
+          status: VolunteerAssignmentStatus;
+          pickup_address: string;
+          dropoff_address: string;
+          pickup_time: string;
+          dropoff_time: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          volunteer_id: string;
+          donation_id: string;
+          pickup_id?: string | null;
+          assigned_by_id: string;
+          assigned_by_role: UserRole;
+          status?: VolunteerAssignmentStatus;
+          pickup_address: string;
+          dropoff_address: string;
+          pickup_time: string;
+          dropoff_time?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          volunteer_id?: string;
+          donation_id?: string;
+          pickup_id?: string | null;
+          assigned_by_id?: string;
+          assigned_by_role?: UserRole;
+          status?: VolunteerAssignmentStatus;
+          pickup_address?: string;
+          dropoff_address?: string;
+          pickup_time?: string;
+          dropoff_time?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      donation_images: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      feedback: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      notifications: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+      messages: {
+        Row: any;
+        Insert: any;
+        Update: any;
+      };
+    };
+  };
+}
